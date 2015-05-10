@@ -1,9 +1,88 @@
-<html>
+<DOCTYPE html>
+<html lang=en>
   <head>
-    <title>Video Streaming Demonstration</title>
+	  <link href="/static/css/bootstrap.min.css" rel="stylesheet">
+	  <link href="/static/css/bootstrap-theme.min.css" rel="stylesheet">
+	  <script src="/static/js/jquery.min.js"></script>
+	  <script src="/static/js/bootstrap.min.js"></script>
+	  <script src="/static/js/angular.min.js"></script>
+      <title>Video Streaming Demonstration</title>
   </head>
   <body>
-    <h1>Video Streaming Demonstration</h1>
-    <img id="bg" src="{{ url_for('video_feed') }}">
+	  <div class="container" ng-app="myApp">
+		  <div class="row" ng-controller="HelloCtrl">
+			  <h2>Live Video</h2>
+			  <div class="col-md-8">
+				  <img id="bg" style="width:100%" 
+					ng-mousemove="mousemove($event)" 
+					ng-mousedown="mousedown($event)" 
+					ng-mouseup="mouseup($event)" 
+					ondragstart="return false"
+					src="[[ url_for('video_feed') ]]">
+				  <div>
+					  <button class="btn btn-default btn-sm">Wake</button>
+					  <button class="btn btn-default btn-sm">Home</button>
+				  </div>
+			  </div>
+			  <div class="col-md-4">
+				  <p>x: {{pos.x || 0}}</p>
+				  <p>y: {{pos.y || 0}}</p>
+				  <p>Start: {{startPoint.x}}, {{startPoint.y}}</p>
+				  <p>End: {{endPoint.x}}, {{endPoint.y}}</p>
+				  <p>{{message}}</p>
+				  <p>
+					4 points
+					<p ng-repeat="pt in fourpts">
+					{{pt.x}} - {{pt.y}}
+					</p>
+				  </p>
+			  </div>
+		  </div>
+	  </div>
   </body>
+  <script>
+var app = angular.module("myApp", []);
+app.controller("HelloCtrl", function($scope){
+	//$scope.isDown = false;
+	$scope.startPoint = null;
+	$scope.startTime = null;
+	$scope.transform = true;
+	$scope.fourpts = [];
+
+	var bg = document.getElementById("bg");
+	var event2pos = function(ev){
+		var x = ev.offsetX * bg.naturalWidth / bg.width;
+		var y = ev.offsetY * bg.naturalHeight / bg.height;
+		return {x: parseInt(x, 10), y: parseInt(y, 10)};
+	}
+	$scope.mousemove = function($event){
+		$scope.pos = event2pos($event);
+	}
+	$scope.mousedown = function($event){
+		var pos = event2pos($event);
+		if ($scope.transform && $scope.fourpts.length != 4){
+			$scope.fourpts.push(pos);
+		}
+		console.log(JSON.stringify($scope.fourpts));
+		if ($scope.transform && $scope.fourpts.length == 4){
+			$scope.transform = false;
+			var xs = [], ys = [];
+			for(var i in $scope.fourpts){
+				var pt = $scope.fourpts[i];
+				xs.push(pt.x);
+				ys.push(pt.y);
+			}
+			bg.src="/video_feed?" + "xs="+xs.join('-')+"&ys="+ys.join("-");
+		}
+
+		$scope.startPoint = pos;
+		$scope.startTime = $event.timeStamp;
+		console.log("mouse down");
+	};
+	$scope.mouseup = function($event){
+		$scope.endPoint = event2pos($event);
+		console.log("mouse up", $event.timeStamp-$scope.startTime);
+	}
+});
+  </script>
 </html>

@@ -13,16 +13,29 @@
 # 1. Install Python dependencies: cv2, flask. (wish that pip install works like a charm)
 # 2. Run "python main.py".
 # 3. Navigate the browser to the local webpage.
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, request
 from camera import VideoCamera
 
-app = Flask(__name__)
+class CustomFlask(Flask):
+    jinja_options = Flask.jinja_options.copy()
+    jinja_options.update(dict(
+        block_start_string='[%',
+        block_end_string='%]',
+        variable_start_string='[[',
+        variable_end_string=']]',
+        comment_start_string='[#',
+        comment_end_string='#]',
+    ))
+
+app = CustomFlask(__name__)
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-def gen(camera):
+camera = VideoCamera()
+
+def gen():
     while True:
         frame = camera.get_frame()
         yield (b'--frame\r\n'
@@ -30,8 +43,16 @@ def gen(camera):
 
 @app.route('/video_feed')
 def video_feed():
-    return Response(gen(VideoCamera()),
+    xs = request.args.get('xs', '').split('-')
+    ys = request.args.get('ys', '').split('-')
+    if len(xs) == 4 and len(ys) == 4:
+        pts = []
+        for i in range(4):
+            pts.append([int(xs[i]), int(ys[i])])
+        camera.set_rect(pts)
+
+    return Response(gen(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', debug=True)
+    app.run(host='0.0.0.0', debug=True, threaded=True)
